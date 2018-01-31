@@ -2,6 +2,30 @@
 
 The purpose of this fork is to allow building the Wordpress Docker image, with modifications to include XDebug.
 
+## Keeping this fork in sync with upstream
+This is for my own reference, to do each time upstream gets ahead of mine; from this article: [https://help.github.com/articles/syncing-a-fork/]()
+
+1. Fetch the branches and their respective commits from the upstream repository. Commits to `master` will be stored in a local branch, `upstream/master`.
+
+    ```bash
+    $ git fetch upstream
+    ```
+2. Check out your fork's local `master` branch.
+
+    ```bash
+    $ git checkout master
+    ```
+3. Merge the changes from `upstream/master` into your local `master` branch. This brings your fork's `master` branch into sync with the upstream repository, without losing your local changes.
+
+    ```bash
+    $ git merge upstream/master
+    ```
+4. Push the changes to remote.
+
+    ```bash
+    $ git push
+    ```
+
 # About this Repo
 
 This is the Git repo of the Docker [official image](https://docs.docker.com/docker-hub/official_repos/) for [wordpress](https://registry.hub.docker.com/_/wordpress/). See [the Docker Hub page](https://registry.hub.docker.com/_/wordpress/) for the full readme on how to use this Docker image and for information regarding contributing and issues.
