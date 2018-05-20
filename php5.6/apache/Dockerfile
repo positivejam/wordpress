@@ -52,8 +52,8 @@ RUN yes | pecl install xdebug \
 
 VOLUME /var/www/html
 
-ENV WORDPRESS_VERSION 4.9.3
-ENV WORDPRESS_SHA1 c2e28e56f6cfa71100d79f1369fc5edc0f87f34d
+ENV WORDPRESS_VERSION 4.9.6
+ENV WORDPRESS_SHA1 40616b40d120c97205e5852c03096115c2fca537
 
 RUN set -ex; \
 	curl -o wordpress.tar.gz -fSL "https://wordpress.org/wordpress-${WORDPRESS_VERSION}.tar.gz"; \
