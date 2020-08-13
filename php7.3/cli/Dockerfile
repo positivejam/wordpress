@@ -1,4 +1,4 @@
-FROM php:%%PHP_VERSION%%-alpine
+FROM php:7.3-alpine
 
 # install the PHP extensions we need (https://make.wordpress.org/hosting/handbook/handbook/server-environment/#php-extensions)
 RUN set -ex; \
@@ -12,7 +12,7 @@ RUN set -ex; \
 		libzip-dev \
 	; \
 	\
-	docker-php-ext-configure gd --with-freetype --with-jpeg; \
+	docker-php-ext-configure gd --with-freetype-dir=/usr --with-jpeg-dir=/usr --with-png-dir=/usr; \
 	docker-php-ext-install -j "$(nproc)" \
 		bcmath \
 		exif \
@@ -68,8 +68,8 @@ WORKDIR /var/www/html
 # sub   rsa2048 2018-05-31 [E]
 ENV WORDPRESS_CLI_GPG_KEY 63AF7AA15067C05616FDDD88A3A2E8F226F0BC06
 
-ENV WORDPRESS_CLI_VERSION %%WORDPRESS_CLI_VERSION%%
-ENV WORDPRESS_CLI_SHA512 %%WORDPRESS_CLI_SHA512%%
+ENV WORDPRESS_CLI_VERSION 2.4.0
+ENV WORDPRESS_CLI_SHA512 4049c7e45e14276a70a41c3b0864be7a6a8cfa8ea65ebac8b184a4f503a91baa1a0d29260d03248bc74aef70729824330fb6b396336172a624332e16f64e37ef
 
 RUN set -ex; \
 	\

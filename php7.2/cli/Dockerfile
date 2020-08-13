@@ -1,15 +1,26 @@
 FROM php:7.2-alpine
 
-# install the PHP extensions we need
+# install the PHP extensions we need (https://make.wordpress.org/hosting/handbook/handbook/server-environment/#php-extensions)
 RUN set -ex; \
 	\
 	apk add --no-cache --virtual .build-deps \
+		$PHPIZE_DEPS \
+		freetype-dev \
+		imagemagick-dev \
 		libjpeg-turbo-dev \
 		libpng-dev \
 	; \
 	\
-	docker-php-ext-configure gd --with-png-dir=/usr --with-jpeg-dir=/usr; \
-	docker-php-ext-install gd mysqli opcache; \
+	docker-php-ext-configure gd --with-freetype-dir=/usr --with-jpeg-dir=/usr --with-png-dir=/usr; \
+	docker-php-ext-install -j "$(nproc)" \
+		bcmath \
+		exif \
+		gd \
+		mysqli \
+		zip \
+	; \
+	pecl install imagick-3.4.4; \
+	docker-php-ext-enable imagick; \
 	\
 	runDeps="$( \
 		scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/lib/php/extensions \
@@ -21,18 +32,26 @@ RUN set -ex; \
 	apk del .build-deps
 
 # set recommended PHP.ini settings
-# see https://secure.php.net/manual/en/opcache.installation.php
+# excluding opcache due https://github.com/docker-library/wordpress/issues/407
+# https://wordpress.org/support/article/editing-wp-config-php/#configure-error-logging
 RUN { \
-		echo 'opcache.memory_consumption=128'; \
-		echo 'opcache.interned_strings_buffer=8'; \
-		echo 'opcache.max_accelerated_files=4000'; \
-		echo 'opcache.revalidate_freq=2'; \
-		echo 'opcache.fast_shutdown=1'; \
-		echo 'opcache.enable_cli=1'; \
-	} > /usr/local/etc/php/conf.d/opcache-recommended.ini
+# https://www.php.net/manual/en/errorfunc.constants.php
+# https://github.com/docker-library/wordpress/issues/420#issuecomment-517839670
+		echo 'error_reporting = E_ERROR | E_WARNING | E_PARSE | E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_COMPILE_WARNING | E_RECOVERABLE_ERROR'; \
+		echo 'display_errors = Off'; \
+		echo 'display_startup_errors = Off'; \
+		echo 'log_errors = On'; \
+		echo 'error_log = /dev/stderr'; \
+		echo 'log_errors_max_len = 1024'; \
+		echo 'ignore_repeated_errors = On'; \
+		echo 'ignore_repeated_source = Off'; \
+		echo 'html_errors = Off'; \
+	} > /usr/local/etc/php/conf.d/error-logging.ini
 
 # install wp-cli dependencies
 RUN apk add --no-cache \
+# bash is needed for 'wp shell': https://github.com/wp-cli/shell-command/blob/b8dafcc2a2eba5732fdee70be077675a302848e9/src/WP_CLI/REPL.php#L104
+		bash \
 		less \
 		mysql-client
 
@@ -40,16 +59,16 @@ RUN set -ex; \
 	mkdir -p /var/www/html; \
 	chown -R www-data:www-data /var/www/html
 WORKDIR /var/www/html
-VOLUME /var/www/html
 
-# pub   2048R/2F6B6B7F 2016-01-07
-#       Key fingerprint = 3B91 9162 5F3B 1F1B F5DD  3B47 673A 0204 2F6B 6B7F
-# uid                  Daniel Bachhuber <daniel@handbuilt.co>
-# sub   2048R/45F9CDE2 2016-01-07
-ENV WORDPRESS_CLI_GPG_KEY 3B9191625F3B1F1BF5DD3B47673A02042F6B6B7F
+# https://make.wordpress.org/cli/2018/05/31/gpg-signature-change/
+# pub   rsa2048 2018-05-31 [SC]
+#       63AF 7AA1 5067 C056 16FD  DD88 A3A2 E8F2 26F0 BC06
+# uid           [ unknown] WP-CLI Releases <releases@wp-cli.org>
+# sub   rsa2048 2018-05-31 [E]
+ENV WORDPRESS_CLI_GPG_KEY 63AF7AA15067C05616FDDD88A3A2E8F226F0BC06
 
-ENV WORDPRESS_CLI_VERSION 1.5.1
-ENV WORDPRESS_CLI_SHA512 8693cdbc06cca37be9976c4f76aa81c111095f88bb121277cbdfa85f8a2ada3b9133cd9641c439e6f5579d3469a1a44488e872ecbff3d3eba0488bbc8033d6d8
+ENV WORDPRESS_CLI_VERSION 2.4.0
+ENV WORDPRESS_CLI_SHA512 4049c7e45e14276a70a41c3b0864be7a6a8cfa8ea65ebac8b184a4f503a91baa1a0d29260d03248bc74aef70729824330fb6b396336172a624332e16f64e37ef
 
 RUN set -ex; \
 	\
@@ -60,8 +79,9 @@ RUN set -ex; \
 	curl -o /usr/local/bin/wp.gpg -fSL "https://github.com/wp-cli/wp-cli/releases/download/v${WORDPRESS_CLI_VERSION}/wp-cli-${WORDPRESS_CLI_VERSION}.phar.gpg"; \
 	\
 	export GNUPGHOME="$(mktemp -d)"; \
-	gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$WORDPRESS_CLI_GPG_KEY"; \
+	gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$WORDPRESS_CLI_GPG_KEY"; \
 	gpg --batch --decrypt --output /usr/local/bin/wp /usr/local/bin/wp.gpg; \
+	command -v gpgconf && gpgconf --kill all || :; \
 	rm -rf "$GNUPGHOME" /usr/local/bin/wp.gpg; \
 	\
 	echo "$WORDPRESS_CLI_SHA512 */usr/local/bin/wp" | sha512sum -c -; \
@@ -70,6 +90,8 @@ RUN set -ex; \
 	apk del .fetch-deps; \
 	\
 	wp --allow-root --version
+
+VOLUME /var/www/html
 
 COPY docker-entrypoint.sh /usr/local/bin/
 
