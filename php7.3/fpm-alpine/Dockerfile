@@ -70,8 +70,8 @@ RUN { \
 	} > /usr/local/etc/php/conf.d/error-logging.ini
 
 
-ENV WORDPRESS_VERSION 5.5.1
-ENV WORDPRESS_SHA1 d3316a4ffff2a12cf92fde8bfdd1ff8691e41931
+ENV WORDPRESS_VERSION 5.6
+ENV WORDPRESS_SHA1 db8b75bfc9de27490434b365c12fd805ca6784ce
 
 RUN set -ex; \
 	curl -o wordpress.tar.gz -fSL "https://wordpress.org/wordpress-${WORDPRESS_VERSION}.tar.gz"; \
@@ -81,8 +81,9 @@ RUN set -ex; \
 	rm wordpress.tar.gz; \
 	chown -R www-data:www-data /usr/src/wordpress; \
 # pre-create wp-content (and single-level children) for folks who want to bind-mount themes, etc so permissions are pre-created properly instead of root:root
+# wp-content/cache: https://github.com/docker-library/wordpress/issues/534#issuecomment-705733507
 	mkdir wp-content; \
-	for dir in /usr/src/wordpress/wp-content/*/; do \
+	for dir in /usr/src/wordpress/wp-content/*/ cache; do \
 		dir="$(basename "${dir%/}")"; \
 		mkdir "wp-content/$dir"; \
 	done; \
